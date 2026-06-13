@@ -1,26 +1,14 @@
 cmake_minimum_required(VERSION 3.8)
 project(fr3_simulation)
 
-if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  add_compile_options(-Wall -Wextra -Wpedantic)
-endif()
-
-# find dependencies
+# Find the ament build system — required for all ROS 2 cmake packages
 find_package(ament_cmake REQUIRED)
-# uncomment the following section in order to fill in
-# further dependencies manually.
-# find_package(<dependency> REQUIRED)
 
-if(BUILD_TESTING)
-  find_package(ament_lint_auto REQUIRED)
-  # the following line skips the linter which checks for copyrights
-  # comment the line when a copyright and license is added to all source files
-  set(ament_cmake_copyright_FOUND TRUE)
-  # the following line skips cpplint (only works in a git repo)
-  # comment the line when this package is in a git repo and when
-  # a copyright and license is added to all source files
-  set(ament_cmake_cpplint_FOUND TRUE)
-  ament_lint_auto_find_test_dependencies()
-endif()
+# Install launch/ and worlds/ directories into the package share folder
+# so ros2 launch and get_package_share_directory() can locate them
+# at runtime after colcon build
+install(DIRECTORY launch worlds
+  DESTINATION share/${PROJECT_NAME}
+)
 
 ament_package()
