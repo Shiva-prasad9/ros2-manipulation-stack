@@ -1,0 +1,45 @@
+# FR3 ros2_control controller configuration
+# Gripper controller removed for Phase 1 — finger joints not exposed
+# by mock_components/GenericSystem. Gripper revisited in Phase 3.
+
+/**:
+  controller_manager:
+    ros__parameters:
+
+      # 50Hz — WSL2 cannot guarantee real-time scheduling above this
+      update_rate: 50
+
+      # Broadcasts all joint states to /joint_states
+      joint_state_broadcaster:
+        type: joint_state_broadcaster/JointStateBroadcaster
+
+      # Receives JointTrajectory messages for the 7 arm joints
+      # MoveIt 2 sends commands here in Phase 2
+      fr3_arm_controller:
+        type: joint_trajectory_controller/JointTrajectoryController
+
+# -----------------------------------------------------------------------
+# JointTrajectoryController — FR3 arm joints
+# -----------------------------------------------------------------------
+/**:
+  fr3_arm_controller:
+    ros__parameters:
+
+      joints:
+        - fr3_joint1
+        - fr3_joint2
+        - fr3_joint3
+        - fr3_joint4
+        - fr3_joint5
+        - fr3_joint6
+        - fr3_joint7
+
+      command_interfaces:
+        - position
+
+      state_interfaces:
+        - position
+        - velocity
+
+      state_publish_rate: 50.0
+      allow_partial_joints_goal: false
