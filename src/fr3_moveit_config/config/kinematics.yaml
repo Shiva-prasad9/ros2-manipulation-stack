@@ -1,0 +1,13 @@
+# Kinematics solver configuration for the fr3_arm planning group
+# Defines which IK (Inverse Kinematics) plugin MoveIt uses to convert
+# a target end-effector pose into joint angles.
+
+fr3_arm:
+  # KDL is the default analytical/numerical IK solver shipped with MoveIt 2.
+  # It works for any kinematic chain but can be slow/fail near singularities.
+  # (We can upgrade to a faster solver like IKFast or TRAC-IK later if needed.)
+  kinematics_solver: kdl_kinematics_plugin/KDLKinematicsPlugin
+
+  # Max time (seconds) the solver will try before giving up
+  kinematics_solver_search_resolution: 0.005
+  kinematics_solver_timeout: 0.05

@@ -1,16 +1,35 @@
 <?xml version="1.0"?>
-<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd"
+            schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>fr3_moveit_config</name>
-  <version>0.0.0</version>
-  <description>TODO: Package description</description>
-  <maintainer email="allforshivu@gmail.com">bn_shiva</maintainer>
-  <license>TODO: License declaration</license>
+  <version>0.0.1</version>
+  <description>
+    MoveIt 2 configuration for the FR3 arm — kinematics, joint limits,
+    OMPL planning pipeline, and controller mapping to fr3_arm_controller.
+  </description>
+  <maintainer email="you@example.com">Shivaprasad</maintainer>
+  <license>Apache-2.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
-  <test_depend>ament_lint_auto</test_depend>
-  <test_depend>ament_lint_common</test_depend>
+  <!-- franka_description: provides the URDF/SRDF this config targets -->
+  <exec_depend>franka_description</exec_depend>
+
+  <!-- moveit_ros_move_group: provides the move_group node -->
+  <exec_depend>moveit_ros_move_group</exec_depend>
+
+  <!-- moveit_kinematics: provides the KDL IK plugin -->
+  <exec_depend>moveit_kinematics</exec_depend>
+
+  <!-- moveit_planners_ompl: provides the OMPL planning plugin -->
+  <exec_depend>moveit_planners_ompl</exec_depend>
+
+  <!-- moveit_ros_visualization: RViz motion planning plugin -->
+  <exec_depend>moveit_ros_visualization</exec_depend>
+
+  <!-- xacro: needed to process the FR3 URDF/SRDF at launch -->
+  <exec_depend>xacro</exec_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

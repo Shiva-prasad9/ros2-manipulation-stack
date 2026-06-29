@@ -1,0 +1,26 @@
+# Tells MoveIt 2 how to execute planned trajectories — which ROS 2
+# controller to send the FollowJointTrajectory action goal to.
+# This is the bridge between MoveIt's planning output and the
+# fr3_arm_controller we brought up in Phase 1.
+
+moveit_simple_controller_manager:
+  controller_names:
+    - fr3_arm_controller
+
+  fr3_arm_controller:
+    # Action type MoveIt sends — matches what JointTrajectoryController
+    # exposes as its action server (confirmed in Phase 1 logs)
+    action_ns: follow_joint_trajectory
+    type: FollowJointTrajectory
+    default: true
+
+    # Must match the joints declared in fr3_controllers.yaml exactly —
+    # MoveIt validates this list against the planning group's joints
+    joints:
+      - fr3_joint1
+      - fr3_joint2
+      - fr3_joint3
+      - fr3_joint4
+      - fr3_joint5
+      - fr3_joint6
+      - fr3_joint7

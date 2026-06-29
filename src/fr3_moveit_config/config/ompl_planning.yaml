@@ -1,0 +1,33 @@
+# OMPL (Open Motion Planning Library) configuration.
+# OMPL is the default sampling-based planner pipeline in MoveIt 2 —
+# it randomly samples joint configurations and connects them into a
+# collision-free path, rather than solving the path analytically.
+
+planning_plugins:
+  - ompl_interface/OMPLPlanner
+
+request_adapters:
+  # Smooths jerky waypoints and fixes minor start-state collisions
+  # before/after planning — these run automatically around the planner
+  - default_planning_request_adapters/ResolveConstraintFrames
+  - default_planning_request_adapters/ValidateWorkspaceBounds
+  - default_planning_request_adapters/CheckStartStateBounds
+  - default_planning_request_adapters/CheckStartStateCollision
+
+# Per-planning-group configuration
+fr3_arm:
+  # RRTConnect: builds two random trees (one from start, one from goal)
+  # and tries to connect them — fast and reliable for arms with no
+  # tight constraints. The standard default choice for a 7-DOF arm.
+  planner_configs:
+    - RRTConnect
+
+  projection_evaluator: joints(fr3_joint1,fr3_joint2)
+  longest_valid_segment_fraction: 0.005
+
+planner_configs:
+  RRTConnect:
+    type: geometric::RRTConnect
+    # range: max distance (in config space) the tree extends per step.
+    # 0.0 = let OMPL auto-compute based on the state space — safest default.
+    range: 0.0
