@@ -1,0 +1,96 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!--
+    Custom Gazebo integration block — written entirely in OUR package.
+
+    We pass gazebo:='false' to franka_description's xacro to avoid
+    triggering its broken franka_gazebo_bringup reference. This file
+    replaces BOTH pieces that gazebo:='true' would normally add:
+
+      1. The gz_ros2_control/GazeboSimSystem hardware plugin
+         (normally franka_arm.ros2_control.xacro line 34)
+      2. The Gazebo <plugin> system block that loads gz_ros2_control
+         (normally franka_arm.ros2_control.xacro line 113, broken)
+
+    Since franka_description's <ros2_control> block (with
+    use_fake_hardware:='false' and gazebo:='false') produces NO
+    hardware plugin at all in that case (falls through to the real
+    franka_hardware/FrankaHardwareInterface branch, which needs a
+    robot_ip we don't have); we override the hardware tag entirely
+    by re-declaring the ros2_control block ourselves, scoped to the
+    fr3_arm joints, pointing at GazeboSimSystem directly.
+  -->
+
+  <ros2_control name="FrankaGazeboHardware" type="system">
+    <hardware>
+      <plugin>gz_ros2_control/GazeboSimSystem</plugin>
+    </hardware>
+    <joint name="fr3_joint1">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+      <state_interface name="effort"/>
+    </joint>
+    <joint name="fr3_joint2">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+      <state_interface name="effort"/>
+    </joint>
+    <joint name="fr3_joint3">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+      <state_interface name="effort"/>
+    </joint>
+    <joint name="fr3_joint4">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+      <state_interface name="effort"/>
+    </joint>
+    <joint name="fr3_joint5">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+      <state_interface name="effort"/>
+    </joint>
+    <joint name="fr3_joint6">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+      <state_interface name="effort"/>
+    </joint>
+    <joint name="fr3_joint7">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+      <state_interface name="effort"/>
+    </joint>
+  </ros2_control>
+
+  <!-- Fix the FR3 base to the world frame in Gazebo physics.
+     Without this, GazeboSimSystem has no world anchor and the
+     entire robot slides/rotates freely under reaction forces. -->
+  
+  <gazebo>
+    <static>false</static>
+  </gazebo>
+
+  <joint name="fr3_base_world_joint" type="fixed">
+    <parent link="world"/>
+    <child link="base"/>
+  </joint>
+
+  <link name="world"/>
+
+  <gazebo>
+    <plugin filename="libgz_ros2_control-system.so" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+      <parameters>$(find fr3_simulation)/config/fr3_controllers.yaml</parameters>
+      <hold_joints>true</hold_joints>
+      <position_proportional_gain>200.0</position_proportional_gain>
+    </plugin>
+  </gazebo>
+
+</robot>

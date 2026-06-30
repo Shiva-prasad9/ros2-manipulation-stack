@@ -6,8 +6,9 @@
   controller_manager:
     ros__parameters:
 
-      # 50Hz — WSL2 cannot guarantee real-time scheduling above this
+      use_sim_time: false
       update_rate: 50
+      position_proportional_gain: 10.0
 
       # Broadcasts all joint states to /joint_states
       joint_state_broadcaster:

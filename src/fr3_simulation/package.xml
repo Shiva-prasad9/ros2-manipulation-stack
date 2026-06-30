@@ -27,6 +27,8 @@
   <!-- xacro: needed to process .urdf.xacro files at launch time -->
   <exec_depend>xacro</exec_depend>
 
+  <exec_depend>ros_gz_bridge</exec_depend>
+
   <export>
     <build_type>ament_cmake</build_type>
   </export>
