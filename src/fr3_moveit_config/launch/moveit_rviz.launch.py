@@ -65,6 +65,7 @@ def generate_launch_description():
             robot_description,
             robot_description_semantic,
             {'robot_description_kinematics': kinematics_yaml},
+            {'use_sim_time': True},
         ],
     )
 

@@ -6,9 +6,8 @@
   controller_manager:
     ros__parameters:
 
-      use_sim_time: false
+      # use_sim_time: false
       update_rate: 50
-      position_proportional_gain: 10.0
 
       # Broadcasts all joint states to /joint_states
       joint_state_broadcaster:
