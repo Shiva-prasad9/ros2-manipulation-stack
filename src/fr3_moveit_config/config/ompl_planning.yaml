@@ -14,6 +14,16 @@ request_adapters:
   - default_planning_request_adapters/CheckStartStateBounds
   - default_planning_request_adapters/CheckStartStateCollision
 
+# Response adapters run AFTER planning to post-process the trajectory.
+# AddTimeOptimalParameterization computes valid time stamps for each
+# waypoint so time_from_start is strictly increasing — without this,
+# MoveIt can produce trajectories where adjacent points have identical
+# timestamps, causing JointTrajectoryController to reject the goal.
+response_adapters:
+  - default_planning_response_adapters/AddTimeOptimalParameterization
+  - default_planning_response_adapters/ValidateSolution
+  - default_planning_response_adapters/DisplayMotionPath
+
 # Per-planning-group configuration
 fr3_arm:
   # RRTConnect: builds two random trees (one from start, one from goal)

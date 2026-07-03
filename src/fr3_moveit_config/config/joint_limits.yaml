@@ -1,18 +1,47 @@
 # Joint limits for trajectory planning and time parameterization.
-# These SCALE the hardware limits already declared in the URDF —
-# they don't replace them. Setting scaling < 1.0 makes the robot
-# move more conservatively than its true hardware maximum.
+# AddTimeOptimalParameterization requires both max_velocity AND
+# max_acceleration to be explicitly defined — missing acceleration
+# limits cause the time parameterization adapter to fail entirely.
 
-joint_limits:
-  fr3_joint1: {has_velocity_limits: true, max_velocity: 2.0, has_acceleration_limits: true, max_acceleration: 3.0}
-  fr3_joint2: {has_velocity_limits: true, max_velocity: 2.0, has_acceleration_limits: true, max_acceleration: 3.0}
-  fr3_joint3: {has_velocity_limits: true, max_velocity: 2.0, has_acceleration_limits: true, max_acceleration: 3.0}
-  fr3_joint4: {has_velocity_limits: true, max_velocity: 2.0, has_acceleration_limits: true, max_acceleration: 3.0}
-  fr3_joint5: {has_velocity_limits: true, max_velocity: 2.5, has_acceleration_limits: true, max_acceleration: 3.0}
-  fr3_joint6: {has_velocity_limits: true, max_velocity: 3.0, has_acceleration_limits: true, max_acceleration: 3.0}
-  fr3_joint7: {has_velocity_limits: true, max_velocity: 3.0, has_acceleration_limits: true, max_acceleration: 3.0}
+robot_description_planning:
+  joint_limits:
+    fr3_joint1:
+      has_velocity_limits: true
+      max_velocity: 2.0
+      has_acceleration_limits: true
+      max_acceleration: 3.0
+    fr3_joint2:
+      has_velocity_limits: true
+      max_velocity: 2.0
+      has_acceleration_limits: true
+      max_acceleration: 3.0
+    fr3_joint3:
+      has_velocity_limits: true
+      max_velocity: 2.0
+      has_acceleration_limits: true
+      max_acceleration: 3.0
+    fr3_joint4:
+      has_velocity_limits: true
+      max_velocity: 2.0
+      has_acceleration_limits: true
+      max_acceleration: 3.0
+    fr3_joint5:
+      has_velocity_limits: true
+      max_velocity: 2.5
+      has_acceleration_limits: true
+      max_acceleration: 3.0
+    fr3_joint6:
+      has_velocity_limits: true
+      max_velocity: 3.0
+      has_acceleration_limits: true
+      max_acceleration: 3.0
+    fr3_joint7:
+      has_velocity_limits: true
+      max_velocity: 3.0
+      has_acceleration_limits: true
+      max_acceleration: 3.0
+    # Global scaling factors applied on top of the above limits.
+    # 0.5 = plan trajectories at 50% of max speed/accel — safer for first tests.
 
-# Global scaling factors applied on top of the above limits.
-# 0.5 = plan trajectories at 50% of max speed/accel — safer for first tests.
-default_velocity_scaling_factor: 0.5
-default_acceleration_scaling_factor: 0.5
+  default_velocity_scaling_factor: 0.5
+  default_acceleration_scaling_factor: 0.5

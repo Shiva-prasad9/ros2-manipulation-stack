@@ -103,7 +103,7 @@
     <plugin filename="libgz_ros2_control-system.so" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
       <parameters>$(find fr3_simulation)/config/fr3_controllers.yaml</parameters>
       <hold_joints>true</hold_joints>
-      <position_proportional_gain>10</position_proportional_gain>
+      <position_proportional_gain>1</position_proportional_gain>
     </plugin>
   </gazebo>
 
