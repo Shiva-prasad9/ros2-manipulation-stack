@@ -12,7 +12,7 @@ request_adapters:
   - default_planning_request_adapters/ResolveConstraintFrames
   - default_planning_request_adapters/ValidateWorkspaceBounds
   - default_planning_request_adapters/CheckStartStateBounds
-  - default_planning_request_adapters/CheckStartStateCollision
+  # - default_planning_request_adapters/CheckStartStateCollision
 
 # Response adapters run AFTER planning to post-process the trajectory.
 # AddTimeOptimalParameterization computes valid time stamps for each

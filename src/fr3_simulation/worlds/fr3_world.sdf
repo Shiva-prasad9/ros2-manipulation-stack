@@ -60,7 +60,7 @@
    <!-- Table — flat surface, positioned reachably in front of FR3 -->
     <model name="table">
       <static>true</static>
-      <pose>0.6 0 0.35 0 0 0</pose>
+      <pose>0.75 0 0.35 0 0 0</pose>
       <link name="table_link">
         <collision name="collision">
           <geometry>
@@ -82,7 +82,7 @@
     <!-- Target box — sits on table surface (z = 0.7 + 0.025) -->
     <model name="target_box">
       <static>false</static>
-      <pose>0.55 0 0.725 0 0 0</pose>
+      <pose>0.65 0 0.875 0 0 0</pose>
       <link name="box_link">
         <inertial>
           <mass>0.1</mass>

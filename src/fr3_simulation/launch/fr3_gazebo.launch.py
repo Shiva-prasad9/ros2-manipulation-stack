@@ -154,7 +154,7 @@ def generate_launch_description():
         #     Delayed 5s to allow Gazebo + its plugin to fully initialise
         # ------------------------------------------------------------
         TimerAction(
-            period=5.0,
+            period=8.0,
             actions=[
                 Node(
                     package='controller_manager',
