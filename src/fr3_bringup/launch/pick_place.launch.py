@@ -77,7 +77,7 @@ def generate_launch_description():
     #    before MTC starts querying the planning scene
     # ----------------------------------------------------------------
     pick_place_node = TimerAction(
-        period=25.0,
+        period=35.0,
         actions=[
             Node(
                 package='fr3_manipulation',

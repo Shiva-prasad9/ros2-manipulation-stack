@@ -49,34 +49,40 @@ public:
   {
     moveit::planning_interface::PlanningSceneInterface psi;
 
-    // Target box — must match Gazebo spawn pose in fr3_world.sdf
-    moveit_msgs::msg::CollisionObject box;
-    box.id = OBJECT_ID;
-    box.header.frame_id = WORLD_FRAME;
-    box.primitives.resize(1);
-    box.primitives[0].type = shape_msgs::msg::SolidPrimitive::BOX;
-    box.primitives[0].dimensions = {0.05, 0.05, 0.05};
-    box.pose.position.x = 0.65;
-    box.pose.position.y = 0.0;
-    box.pose.position.z = 0.875;
-    box.pose.orientation.w = 1.0;
-    box.operation = box.ADD;
-
     // Table — must match Gazebo table in fr3_world.sdf
     moveit_msgs::msg::CollisionObject table;
     table.id = "table";
     table.header.frame_id = WORLD_FRAME;
     table.primitives.resize(1);
     table.primitives[0].type = shape_msgs::msg::SolidPrimitive::BOX;
-    table.primitives[0].dimensions = {0.5, 0.8, 0.7};
-    table.pose.position.x = 0.75;
+    table.primitives[0].dimensions = {0.4, 0.8, 0.7};
+    table.pose.position.x = 0.85;
     table.pose.position.y = 0.0;
     table.pose.position.z = 0.35;
     table.pose.orientation.w = 1.0;
     table.operation = table.ADD;
 
-    psi.applyCollisionObjects({box, table});
-    RCLCPP_INFO(LOGGER, "Planning scene updated with box and table");
+    // Target box
+      auto s = std::make_unique<mtc::stages::ModifyPlanningScene>(
+        "add target box");
+      moveit_msgs::msg::CollisionObject box;
+      box.id = OBJECT_ID;
+      box.header.frame_id = WORLD_FRAME;
+      box.primitives.resize(1);
+      box.primitives[0].type = shape_msgs::msg::SolidPrimitive::BOX;
+      box.primitives[0].dimensions = {0.05, 0.05, 0.05};
+      box.pose.position.x = 0.75;
+      box.pose.position.y = 0.0;
+      box.pose.position.z = 0.875;
+      box.pose.orientation.w = 1.0;
+      box.operation = box.ADD;
+    
+
+    std::vector<moveit_msgs::msg::CollisionObject> objects;
+    objects.push_back(table);
+    objects.push_back(box);
+    psi.applyCollisionObjects(objects);
+    RCLCPP_INFO(LOGGER, "Planning scene updated with table and box");
     rclcpp::sleep_for(std::chrono::seconds(1));
   }
 
@@ -315,18 +321,19 @@ private:
 
         // Target pose relative to the object frame
         geometry_msgs::msg::PoseStamped target;
-        target.header.frame_id = OBJECT_ID;  // relative to object
-        target.pose.position.y = 0.5;        // 50cm to the side
+        target.header.frame_id = WORLD_FRAME;
+        target.pose.position.x = 0.55;
+        target.pose.position.y = 0.3;
+        target.pose.position.z = 0.875;
         target.pose.orientation.w = 1.0;
         place_pose->setPose(target);
         place_pose->setMonitoredStage(attach_object_stage);
 
-        // ComputeIK for the place pose
         auto ik_wrapper = std::make_unique<mtc::stages::ComputeIK>(
           "place pose IK", std::move(place_pose));
         ik_wrapper->setMaxIKSolutions(4);
         ik_wrapper->setMinSolutionDistance(1.0);
-        ik_wrapper->setIKFrame(OBJECT_ID);
+        ik_wrapper->setIKFrame(HAND_FRAME);  // use hand frame, not object frame
         ik_wrapper->properties().configureInitFrom(mtc::Stage::PARENT,
                                                    {"eef", "group"});
         ik_wrapper->properties().configureInitFrom(mtc::Stage::INTERFACE,
