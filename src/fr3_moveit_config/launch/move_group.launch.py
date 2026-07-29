@@ -69,6 +69,7 @@ def generate_launch_description():
     joint_limits_yaml = load_yaml(fr3_moveit_config_pkg, 'config/joint_limits.yaml')
     moveit_controllers_yaml = load_yaml(fr3_moveit_config_pkg, 'config/moveit_controllers.yaml')
     ompl_planning_yaml = load_yaml(fr3_moveit_config_pkg, 'config/ompl_planning.yaml')
+    
 
     # ----------------------------------------------------------------
     # 5. Planning pipeline parameter block
