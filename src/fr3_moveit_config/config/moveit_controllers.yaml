@@ -6,6 +6,7 @@
 moveit_simple_controller_manager:
   controller_names:
     - fr3_arm_controller
+    - fr3_gripper_controller
 
   fr3_arm_controller:
     # Action type MoveIt sends — matches what JointTrajectoryController
@@ -24,3 +25,17 @@ moveit_simple_controller_manager:
       - fr3_joint5
       - fr3_joint6
       - fr3_joint7
+
+# Tell move_group to allow execution even when some joints have no controller
+moveit_manage_controllers: true
+allowed_execution_duration_scaling: 1.2
+allowed_goal_duration_margin: 0.5
+allowed_start_tolerance: 0.1
+
+fr3_gripper_controller:
+    action_ns: follow_joint_trajectory
+    type: FollowJointTrajectory
+    default: true
+    joints:
+      - fr3_finger_joint1
+      - fr3_finger_joint2

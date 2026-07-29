@@ -17,6 +17,8 @@ find_package(moveit_ros_planning_interface REQUIRED)
 find_package(moveit_task_constructor_core REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(tf2_eigen REQUIRED)
+find_package(rclcpp_action REQUIRED)
+find_package(moveit_msgs REQUIRED)
 
 # ── Pick and place executable ─────────────────────────────────────────
 add_executable(pick_place_node src/pick_place_node.cpp)
@@ -27,6 +29,8 @@ ament_target_dependencies(pick_place_node
   moveit_task_constructor_core
   geometry_msgs
   tf2_eigen
+  rclcpp_action
+  moveit_msgs
 )
 
 # ── Install ───────────────────────────────────────────────────────────
