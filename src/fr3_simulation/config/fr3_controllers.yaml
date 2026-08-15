@@ -18,8 +18,6 @@
       fr3_arm_controller:
         type: joint_trajectory_controller/JointTrajectoryController
       
-      fr3_gripper_controller:
-        type: joint_trajectory_controller/JointTrajectoryController
 
 # -----------------------------------------------------------------------
 # JointTrajectoryController — FR3 arm joints
@@ -46,17 +44,3 @@
 
       state_publish_rate: 50.0
       allow_partial_joints_goal: false
-
-
-/**:
-  fr3_gripper_controller:
-    ros__parameters:
-      joints:
-        - fr3_finger_joint1
-        - fr3_finger_joint2
-      command_interfaces:
-        - position
-      state_interfaces:
-        - position
-        - velocity
-      state_publish_rate: 50.0

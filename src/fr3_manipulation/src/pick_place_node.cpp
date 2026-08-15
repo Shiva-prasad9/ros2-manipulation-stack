@@ -1,14 +1,13 @@
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp_action/rclcpp_action.hpp>
+#include <moveit/planning_scene/planning_scene.hpp>
 #include <moveit/planning_scene_interface/planning_scene_interface.hpp>
 #include <moveit/task_constructor/task.h>
 #include <moveit/task_constructor/solvers.h>
 #include <moveit/task_constructor/stages.h>
 #include <moveit/task_constructor/storage.h>
-#include <trajectory_msgs/msg/joint_trajectory_point.hpp>
 #include <moveit_msgs/action/execute_trajectory.hpp>
-#include <thread>
-#include <cmath>
+#include <trajectory_msgs/msg/joint_trajectory_point.hpp>
 #if __has_include(<tf2_geometry_msgs/tf2_geometry_msgs.hpp>)
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #else
@@ -24,13 +23,28 @@ static const rclcpp::Logger LOGGER = rclcpp::get_logger("pick_place_node");
 namespace mtc = moveit::task_constructor;
 
 // ─────────────────────────────────────────────────────────────────────
-// Robot configuration — FR3 specific
+// Robot configuration — FR3
 // ─────────────────────────────────────────────────────────────────────
 static const std::string ARM_GROUP   = "fr3_arm";
 static const std::string HAND_GROUP  = "fr3_hand";
 static const std::string HAND_FRAME  = "fr3_hand_tcp";
 static const std::string WORLD_FRAME = "world";
 static const std::string OBJECT_ID   = "target_box";
+
+// ─────────────────────────────────────────────────────────────────────
+// Scene geometry — must match fr3_world.sdf exactly
+// Table: center x=0.6, z=0.2, size 0.4x0.8x0.4 → top at z=0.4
+// Box:   center x=0.55, z=0.425 (sits on table top: 0.4 + 0.025)
+// ─────────────────────────────────────────────────────────────────────
+static const double TABLE_X    = 0.6;
+static const double TABLE_Z    = 0.15;
+static const double TABLE_DX   = 0.4;
+static const double TABLE_DY   = 0.8;
+static const double TABLE_DZ   = 0.3;
+
+static const double BOX_X      = 0.55;
+static const double BOX_Z      = 0.7;
+static const double BOX_SIZE   = 0.05;
 
 // ─────────────────────────────────────────────────────────────────────
 // PickPlaceNode
@@ -47,33 +61,34 @@ public:
     return node_->get_node_base_interface();
   }
 
+  // ── Add collision objects to MoveIt planning scene ────────────────
   void setupPlanningScene()
   {
     moveit::planning_interface::PlanningSceneInterface psi;
 
-    // Table
+    // Table — matches fr3_world.sdf geometry exactly
     moveit_msgs::msg::CollisionObject table;
     table.id = "table";
     table.header.frame_id = WORLD_FRAME;
     table.primitives.resize(1);
     table.primitives[0].type = shape_msgs::msg::SolidPrimitive::BOX;
-    table.primitives[0].dimensions = {0.4, 0.8, 0.7};
-    table.pose.position.x = 0.85;
+    table.primitives[0].dimensions = {TABLE_DX, TABLE_DY, TABLE_DZ};
+    table.pose.position.x = TABLE_X;
     table.pose.position.y = 0.0;
-    table.pose.position.z = 0.35;
+    table.pose.position.z = TABLE_Z;
     table.pose.orientation.w = 1.0;
     table.operation = table.ADD;
 
-    // Target box
+    // Target box — sits on table top
     moveit_msgs::msg::CollisionObject box;
     box.id = OBJECT_ID;
     box.header.frame_id = WORLD_FRAME;
     box.primitives.resize(1);
     box.primitives[0].type = shape_msgs::msg::SolidPrimitive::BOX;
-    box.primitives[0].dimensions = {0.05, 0.05, 0.05};
-    box.pose.position.x = 0.75;
+    box.primitives[0].dimensions = {BOX_SIZE, BOX_SIZE, BOX_SIZE};
+    box.pose.position.x = BOX_X;
     box.pose.position.y = 0.0;
-    box.pose.position.z = 0.875;
+    box.pose.position.z = BOX_Z;
     box.pose.orientation.w = 1.0;
     box.operation = box.ADD;
 
@@ -81,10 +96,12 @@ public:
     objects.push_back(table);
     objects.push_back(box);
     psi.applyCollisionObjects(objects);
-    RCLCPP_INFO(LOGGER, "Planning scene updated with table and box");
+    RCLCPP_INFO(LOGGER, "Planning scene: table at x=%.2f z=%.2f, box at x=%.2f z=%.2f",
+      TABLE_X, TABLE_Z, BOX_X, BOX_Z);
     rclcpp::sleep_for(std::chrono::seconds(1));
   }
 
+  // ── Execute the pick-and-place task ───────────────────────────────
   void doTask()
   {
     task_ = createTask();
@@ -104,44 +121,37 @@ public:
     RCLCPP_INFO(LOGGER, "Task planned successfully! Executing...");
     task_.introspection().publishSolution(*task_.solutions().front());
 
-    // Cast top-level solution to SolutionSequence
+    // Cast solution to SolutionSequence to iterate sub-trajectories
     const auto* solution_seq =
       dynamic_cast<const mtc::SolutionSequence*>(task_.solutions().front().get());
-
     if (!solution_seq) {
       RCLCPP_ERROR(LOGGER, "Solution is not a SolutionSequence");
       return;
     }
 
-    // Create ExecuteTrajectory action client
-    // ExecuteTaskSolutionCapability not available in binary Jazzy MTC install
+    // Use ExecuteTrajectory action — ExecuteTaskSolutionCapability
+    // not available in binary Jazzy MTC install
     auto action_client =
       rclcpp_action::create_client<moveit_msgs::action::ExecuteTrajectory>(
         node_, "/execute_trajectory");
-
     if (!action_client->wait_for_action_server(std::chrono::seconds(10))) {
       RCLCPP_ERROR(LOGGER, "ExecuteTrajectory action server not available");
       return;
     }
 
-    // Execute each sub-trajectory sequentially
-int traj_count = 0;
+    int traj_count = 0;
     for (const auto* sub_sol : solution_seq->solutions()) {
       const auto* sub_traj = dynamic_cast<const mtc::SubTrajectory*>(sub_sol);
-      if (!sub_traj || !sub_traj->trajectory() || sub_traj->trajectory()->empty()) {
+      if (!sub_traj || !sub_traj->trajectory() || sub_traj->trajectory()->empty())
         continue;
-      }
 
-      // Build a new trajectory containing ONLY arm joints
-      // Strips finger joints that have no controller
+      // Build filtered trajectory with arm joints only (no finger joints)
       moveit_msgs::msg::RobotTrajectory traj_msg;
       sub_traj->trajectory()->getRobotTrajectoryMsg(traj_msg);
 
-      // Filter joint_trajectory to remove finger joints
       moveit_msgs::msg::RobotTrajectory filtered_msg;
       filtered_msg.joint_trajectory.header = traj_msg.joint_trajectory.header;
 
-      // Identify which indices are arm joints (not finger joints)
       std::vector<size_t> arm_indices;
       for (size_t i = 0; i < traj_msg.joint_trajectory.joint_names.size(); ++i) {
         const auto& name = traj_msg.joint_trajectory.joint_names[i];
@@ -151,13 +161,11 @@ int traj_count = 0;
         }
       }
 
-      // Skip if no arm joints in this trajectory
       if (arm_indices.empty()) {
         RCLCPP_INFO(LOGGER, "Skipping gripper-only trajectory");
         continue;
       }
 
-      // Copy only arm joint data from each waypoint
       for (const auto& point : traj_msg.joint_trajectory.points) {
         trajectory_msgs::msg::JointTrajectoryPoint filtered_point;
         filtered_point.time_from_start = point.time_from_start;
@@ -175,8 +183,10 @@ int traj_count = 0;
       moveit_msgs::action::ExecuteTrajectory::Goal goal;
       goal.trajectory = filtered_msg;
 
-      RCLCPP_INFO(LOGGER, "Executing sub-trajectory %d (%zu arm joints)...",
-        ++traj_count, filtered_msg.joint_trajectory.joint_names.size());
+      RCLCPP_INFO(LOGGER, "Executing sub-trajectory %d (%zu arm joints, %zu waypoints)...",
+        ++traj_count,
+        filtered_msg.joint_trajectory.joint_names.size(),
+        filtered_msg.joint_trajectory.points.size());
 
       auto future = action_client->async_send_goal(goal);
       auto goal_handle = future.get();
@@ -197,26 +207,32 @@ int traj_count = 0;
   }
 
 private:
+  // ── Build the MTC task ────────────────────────────────────────────
   mtc::Task createTask()
   {
     mtc::Task task;
     task.stages()->setName("fr3_pick_and_place");
     task.loadRobotModel(node_);
 
+    // Task-level properties inherited by all stages
     task.setProperty("group", ARM_GROUP);
     task.setProperty("eef", HAND_GROUP);
     task.setProperty("ik_frame", HAND_FRAME);
 
-    // Solvers
+    // ── Solvers ───────────────────────────────────────────────────
+    // OMPL — free-space arm motion
     auto sampling_planner = std::make_shared<mtc::solvers::PipelinePlanner>(node_);
+    // JointInterpolation — simple gripper open/close
     auto interpolation_planner =
       std::make_shared<mtc::solvers::JointInterpolationPlanner>();
+    // Cartesian — straight-line end-effector motion
     auto cartesian_planner = std::make_shared<mtc::solvers::CartesianPath>();
     cartesian_planner->setMaxVelocityScalingFactor(0.3);
     cartesian_planner->setMaxAccelerationScalingFactor(0.3);
     cartesian_planner->setStepSize(0.01);
 
-    // Stage 1: Current State
+    // ── Stage 1: Current State (Generator) ───────────────────────
+    // Saves pointer — monitored by GenerateGraspPose
     mtc::Stage* current_state_ptr = nullptr;
     {
       auto s = std::make_unique<mtc::stages::CurrentState>("current state");
@@ -224,7 +240,7 @@ private:
       task.add(std::move(s));
     }
 
-    // Stage 2: Open gripper
+    // ── Stage 2: Open gripper ─────────────────────────────────────
     {
       auto s = std::make_unique<mtc::stages::MoveTo>(
         "open gripper", interpolation_planner);
@@ -233,17 +249,19 @@ private:
       task.add(std::move(s));
     }
 
-    // Stage 3: Move to pick (Connector)
+    // ── Stage 3: Move to pick (Connector) ─────────────────────────
+    // Bridges home pose to the grasp pose inside the pick container
     {
       auto s = std::make_unique<mtc::stages::Connect>(
         "move to pick",
         mtc::stages::Connect::GroupPlannerVector{{ARM_GROUP, sampling_planner}});
-      s->setTimeout(10.0);
+      s->setTimeout(30.0);
       s->properties().configureInitFrom(mtc::Stage::PARENT);
       task.add(std::move(s));
     }
 
-    // Stage 4: Pick container
+    // ── Stage 4: Pick container ───────────────────────────────────
+    // Approach (backward ←) | GenerateGraspPose+IK (Generator) | grasp + lift (forward →)
     mtc::Stage* attach_object_stage = nullptr;
     {
       auto pick = std::make_unique<mtc::SerialContainer>("pick object");
@@ -251,22 +269,28 @@ private:
       pick->properties().configureInitFrom(mtc::Stage::PARENT,
                                            {"eef", "group", "ik_frame"});
 
-      // Approach
+      // Approach: straight-line along gripper Z — solved BACKWARD from grasp pose
       {
         auto s = std::make_unique<mtc::stages::MoveRelative>(
           "approach object", cartesian_planner);
         s->properties().set("marker_ns", std::string("approach"));
         s->properties().set("link", HAND_FRAME);
         s->properties().configureInitFrom(mtc::Stage::PARENT, {"group"});
-        s->setMinMaxDistance(0.1, 0.15);
+        s->setMinMaxDistance(0.001, 0.15);
         geometry_msgs::msg::Vector3Stamped vec;
-        vec.header.frame_id = HAND_FRAME;
-        vec.vector.z = 1.0;
+        vec.header.frame_id = WORLD_FRAME;
+        vec.vector.x = 0.0;
+        vec.vector.y = 0.0;
+        vec.vector.z = -1.0;
         s->setDirection(vec);
         pick->insert(std::move(s));
       }
 
       // GenerateGraspPose + ComputeIK
+      // GenerateGraspPose generates candidate orientations around the object
+      // ComputeIK converts each Cartesian pose to joint angles
+      // setIgnoreCollisions(true) allows IK to find solutions even when
+      // the hand is near the table — approach will handle actual collision avoidance
       {
         auto grasp_pose = std::make_unique<mtc::stages::GenerateGraspPose>(
           "generate grasp pose");
@@ -274,22 +298,20 @@ private:
         grasp_pose->properties().set("marker_ns", std::string("grasp_pose"));
         grasp_pose->setPreGraspPose("open");
         grasp_pose->setObject(OBJECT_ID);
-        grasp_pose->setAngleDelta(M_PI / 12);
+        grasp_pose->setAngleDelta(M_PI / 4);  // 8 candidates every 45 degrees
         grasp_pose->setMonitoredStage(current_state_ptr);
+        grasp_pose->setRotationAxis(Eigen::Vector3d(0, 0, 1));  // rotate around Z
 
-        Eigen::Isometry3d grasp_frame_transform;
-        Eigen::Quaterniond q =
-          Eigen::AngleAxisd(M_PI / 2, Eigen::Vector3d::UnitX()) *
-          Eigen::AngleAxisd(M_PI / 2, Eigen::Vector3d::UnitY()) *
-          Eigen::AngleAxisd(M_PI / 2, Eigen::Vector3d::UnitZ());
-        grasp_frame_transform.linear() = q.matrix();
-        grasp_frame_transform.translation().z() = 0.1;
+        // Grasp frame: no offset — plan directly to object center
+        Eigen::Isometry3d grasp_frame_transform = Eigen::Isometry3d::Identity();
+        grasp_frame_transform.translation().z() = 0.15;
 
         auto ik_wrapper = std::make_unique<mtc::stages::ComputeIK>(
           "grasp pose IK", std::move(grasp_pose));
-        ik_wrapper->setMaxIKSolutions(8);
+        ik_wrapper->setMaxIKSolutions(2);
         ik_wrapper->setMinSolutionDistance(1.0);
         ik_wrapper->setIKFrame(grasp_frame_transform, HAND_FRAME);
+        ik_wrapper->setIgnoreCollisions(true);  // ignore table collision during IK
         ik_wrapper->properties().configureInitFrom(mtc::Stage::PARENT,
                                                    {"eef", "group"});
         ik_wrapper->properties().configureInitFrom(mtc::Stage::INTERFACE,
@@ -297,7 +319,7 @@ private:
         pick->insert(std::move(ik_wrapper));
       }
 
-      // Allow collision (hand, object)
+      // Allow collision between hand and object so gripper can close on it
       {
         auto s = std::make_unique<mtc::stages::ModifyPlanningScene>(
           "allow collision (hand,object)");
@@ -318,7 +340,8 @@ private:
         pick->insert(std::move(s));
       }
 
-      // Attach object
+      // Attach object — box moves with gripper from here onward
+      // Save pointer so GeneratePlacePose can monitor this stage
       {
         auto s = std::make_unique<mtc::stages::ModifyPlanningScene>(
           "attach object");
@@ -327,12 +350,12 @@ private:
         pick->insert(std::move(s));
       }
 
-      // Lift
+      // Lift: straight-line +Z in world frame — solved FORWARD after attach
       {
         auto s = std::make_unique<mtc::stages::MoveRelative>(
           "lift object", cartesian_planner);
         s->properties().configureInitFrom(mtc::Stage::PARENT, {"group"});
-        s->setMinMaxDistance(0.1, 0.3);
+        s->setMinMaxDistance(0.03, 0.3);
         s->setIKFrame(HAND_FRAME);
         s->properties().set("marker_ns", std::string("lift_object"));
         geometry_msgs::msg::Vector3Stamped vec;
@@ -345,7 +368,7 @@ private:
       task.add(std::move(pick));
     }
 
-    // Stage 5: Move to place (Connector)
+    // ── Stage 5: Move to place (Connector) ───────────────────────
     {
       auto s = std::make_unique<mtc::stages::Connect>(
         "move to place",
@@ -357,7 +380,7 @@ private:
       task.add(std::move(s));
     }
 
-    // Stage 6: Place container
+    // ── Stage 6: Place container ──────────────────────────────────
     {
       auto place = std::make_unique<mtc::SerialContainer>("place object");
       task.properties().exposeTo(place->properties(), {"eef", "group", "ik_frame"});
@@ -365,6 +388,7 @@ private:
                                             {"eef", "group", "ik_frame"});
 
       // GeneratePlacePose + ComputeIK
+      // Place 0.3m to the side of the object in the world frame
       {
         auto place_pose = std::make_unique<mtc::stages::GeneratePlacePose>(
           "generate place pose");
@@ -374,9 +398,9 @@ private:
 
         geometry_msgs::msg::PoseStamped target;
         target.header.frame_id = WORLD_FRAME;
-        target.pose.position.x = 0.55;
-        target.pose.position.y = 0.3;
-        target.pose.position.z = 0.875;
+        target.pose.position.x = BOX_X;
+        target.pose.position.y = 0.3;   // 30cm to the side
+        target.pose.position.z = BOX_Z;
         target.pose.orientation.w = 1.0;
         place_pose->setPose(target);
         place_pose->setMonitoredStage(attach_object_stage);
@@ -386,6 +410,7 @@ private:
         ik_wrapper->setMaxIKSolutions(4);
         ik_wrapper->setMinSolutionDistance(1.0);
         ik_wrapper->setIKFrame(HAND_FRAME);
+        ik_wrapper->setIgnoreCollisions(true);
         ik_wrapper->properties().configureInitFrom(mtc::Stage::PARENT,
                                                    {"eef", "group"});
         ik_wrapper->properties().configureInitFrom(mtc::Stage::INTERFACE,
@@ -393,7 +418,7 @@ private:
         place->insert(std::move(ik_wrapper));
       }
 
-      // Open gripper
+      // Open gripper to release
       {
         auto s = std::make_unique<mtc::stages::MoveTo>(
           "open gripper", interpolation_planner);
@@ -402,7 +427,7 @@ private:
         place->insert(std::move(s));
       }
 
-      // Forbid collision
+      // Forbid collision between hand and object after release
       {
         auto s = std::make_unique<mtc::stages::ModifyPlanningScene>(
           "forbid collision (hand,object)");
@@ -414,7 +439,7 @@ private:
         place->insert(std::move(s));
       }
 
-      // Detach object
+      // Detach object from gripper
       {
         auto s = std::make_unique<mtc::stages::ModifyPlanningScene>(
           "detach object");
@@ -422,17 +447,17 @@ private:
         place->insert(std::move(s));
       }
 
-      // Retreat
+      // Retreat: move away from placed object
       {
         auto s = std::make_unique<mtc::stages::MoveRelative>(
           "retreat", cartesian_planner);
         s->properties().configureInitFrom(mtc::Stage::PARENT, {"group"});
-        s->setMinMaxDistance(0.1, 0.3);
+        s->setMinMaxDistance(0.03, 0.3);
         s->setIKFrame(HAND_FRAME);
         s->properties().set("marker_ns", std::string("retreat"));
         geometry_msgs::msg::Vector3Stamped vec;
         vec.header.frame_id = WORLD_FRAME;
-        vec.vector.x = -0.5;
+        vec.vector.x = -0.3;
         s->setDirection(vec);
         place->insert(std::move(s));
       }
@@ -440,7 +465,7 @@ private:
       task.add(std::move(place));
     }
 
-    // Stage 7: Return home
+    // ── Stage 7: Return home ──────────────────────────────────────
     {
       auto s = std::make_unique<mtc::stages::MoveTo>(
         "return home", sampling_planner);
@@ -472,9 +497,7 @@ int main(int argc, char** argv)
   executor.add_node(node->getNodeBaseInterface());
 
   auto spin_thread = std::make_unique<std::thread>(
-    [&executor]() {
-      executor.spin();
-    });
+    [&executor]() { executor.spin(); });
 
   rclcpp::sleep_for(std::chrono::seconds(3));
 

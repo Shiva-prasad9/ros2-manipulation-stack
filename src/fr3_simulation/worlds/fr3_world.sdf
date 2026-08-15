@@ -58,19 +58,15 @@
     </model>
 
    <!-- Table — flat surface, positioned reachably in front of FR3 -->
-    <model name="table">
+<model name="table">
       <static>true</static>
-      <pose>0.85 0 0.35 0 0 0</pose>
+      <pose>0.6 0 0.15 0 0 0</pose>
       <link name="table_link">
         <collision name="collision">
-          <geometry>
-            <box><size>0.5 0.8 0.7</size></box>
-          </geometry>
+          <geometry><box><size>0.4 0.8 0.4</size></box></geometry>
         </collision>
         <visual name="visual">
-          <geometry>
-            <box><size>0.5 0.8 0.7</size></box>
-          </geometry>
+          <geometry><box><size>0.4 0.8 0.3</size></box></geometry>
           <material>
             <ambient>0.5 0.35 0.2 1</ambient>
             <diffuse>0.5 0.35 0.2 1</diffuse>
@@ -79,10 +75,9 @@
       </link>
     </model>
 
-    <!-- Target box — sits on table surface (z = 0.7 + 0.025) -->
     <model name="target_box">
       <static>false</static>
-      <pose>0.75 0 0.875 0 0 0</pose>
+      <pose>0.55 0 0.7 0 0 0</pose>
       <link name="box_link">
         <inertial>
           <mass>0.1</mass>
@@ -92,14 +87,10 @@
           </inertia>
         </inertial>
         <collision name="collision">
-          <geometry>
-            <box><size>0.05 0.05 0.05</size></box>
-          </geometry>
+          <geometry><box><size>0.05 0.05 0.05</size></box></geometry>
         </collision>
         <visual name="visual">
-          <geometry>
-            <box><size>0.05 0.05 0.05</size></box>
-          </geometry>
+          <geometry><box><size>0.05 0.05 0.05</size></box></geometry>
           <material>
             <ambient>0.8 0.1 0.1 1</ambient>
             <diffuse>0.8 0.1 0.1 1</diffuse>

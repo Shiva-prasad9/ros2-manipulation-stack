@@ -168,12 +168,6 @@ def generate_launch_description():
                     arguments=['fr3_arm_controller'],
                     output='screen'
                 ),
-                Node(
-                    package='controller_manager',
-                    executable='spawner',
-                    arguments=['fr3_gripper_controller'],
-                    output='screen'
-                ),
             ]
         ),
 
