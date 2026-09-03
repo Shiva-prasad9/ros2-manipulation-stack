@@ -171,6 +171,4 @@ Task
 
 ---
 
-## Interview Framing
 
-> *"The MTC interface direction system was the hardest conceptual problem — it took multiple sessions to understand that MTC solves stages inside-out, not sequentially. Once I understood that a Generator inside a SerialContainer anchors the bidirectional solve, the correct structure became obvious. The ExecuteTaskSolutionCapability workaround was a practical engineering decision: recognise the dependency isn't available, find the underlying API in storage.h, and build a clean bypass rather than blocking on a missing package."*
